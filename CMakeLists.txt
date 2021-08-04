@@ -1,7 +1,7 @@
 
 
 cmake_minimum_required(VERSION 3.2 FATAL_ERROR)
-project(Krapfix)
+project(ANC)
 
 # Add .lib files
 link_directories(${CMAKE_SOURCE_DIR}/lib)
@@ -30,28 +30,13 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
 # LOOK for the packages that we need! #
 #######################################
 
-# Pulse
-find_package(Pulse REQUIRED)
-message(STATUS "Found pulse in ${PULSE_INCLUDE_DIR}")
+# OpenAL
+find_package(OpenAL REQUIRED)
 
-# # OpenGL
-# find_package(OpenGL REQUIRED)
-
-# # GLM
-# find_package(GLM REQUIRED)
-# message(STATUS "GLM included at ${GLM_INCLUDE_DIR}")
-
-# # GLFW
-# find_package(GLFW3 REQUIRED)
-# message(STATUS "Found GLFW3 in ${GLFW3_INCLUDE_DIR}")
-
-# # ASSIMP
-# find_package(ASSIMP REQUIRED)
-# message(STATUS "Found ASSIMP in ${ASSIMP_INCLUDE_DIR}")
 
 
 # Put all libraries into a variable
-# set(LIBS Pulse)
+set(LIBS ${OPENAL_LIBRARY})
 
 # Define the include DIRs
 include_directories(
