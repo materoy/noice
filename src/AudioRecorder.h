@@ -16,8 +16,8 @@ public:
     void stopRecord();
 
 private:
-    const int SRATE = 44100;
-    const int SSIZE = 1024;
+    const ALint SRATE = 44100;
+    const ALsizei SSIZE = 1024;
 
     ALubyte captureBuffer[1048576];
     ALubyte *captureBufferPtr = captureBuffer;

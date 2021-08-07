@@ -1,6 +1,7 @@
 #include "AudioRecorder.h"
 #include <iostream>
 #include <stdio.h>
+#include <unistd.h>
 
 AudioRecorder::AudioRecorder()
 {
@@ -44,30 +45,26 @@ void AudioRecorder::setupAudioProcessor()
     if (captureDevice == NULL)
     {
         std::cout << "ERROR::NO ACCESSS TO THE Open-AL-CAPUTRE-device" << std::endl;
-        exit(EXIT_FAILURE);
+        exit(EXIT_FAILURE); 
     }
 
     std::cout << "INFO::CAPTURE DEVICE OPENED" << std::endl;
+    alcCaptureStart(captureDevice);
 }
 
 void AudioRecorder::startRecord()
 {
-    recording = true;
 
-    printf("    INFO::START RECORDING AUDIO\n");
-    alcCaptureStart(captureDevice);
-    while (recording)
+    alcGetIntegerv(captureDevice, ALC_CAPTURE_SAMPLES, 1, &samples);
+    samplesCaptured += samples;
+    printf("Capturing %d samples, %d samples captured \r", samples, samplesCaptured);
+    fflush(stdout);
+    if (samples)
     {
-        alcGetIntegerv(captureDevice, ALC_CAPTURE_SAMPLES, 1, &samples);
-        samplesCaptured += samples;
-        printf("Capturing %d samples, %d samples captured \r", samples, samplesCaptured);
-        fflush(stdout);
-        //     if (samples)
-        //     {
-        //         alcCaptureSamples(captureDevice, (ALCvoid *)captureBufferPtr, samples);
-        //         captureBufferPtr += samples * 4;
-        //     }
+        alcCaptureSamples(captureDevice, (ALCvoid *)captureBufferPtr, samples);
+        captureBufferPtr += samples * 4;
     }
+    usleep(10000);
 }
 
 void AudioRecorder::stopRecord()

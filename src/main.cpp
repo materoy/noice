@@ -24,10 +24,12 @@ int main()
     /// the main recording loop
     /// Records for 3 seconds
 
-    cout << "Start recording audio" << endl;
+    printf("INFO::START RECORDING AUDIO\n");
 
-    audioRecorder->startRecord();
-    sleep(3);
+    while (time(NULL) - currentTime < 3)
+    {
+        audioRecorder->startRecord();
+    }
 
     printf("\n  Done capturing ... \n ");
 
