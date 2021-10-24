@@ -33,6 +33,18 @@ ALCdevice *open_playback_device() {
 
 ALCdevice *open_capture_device() {
 
+  // Print the list of capture devices
+
+  printf("Available capture devices:\n");
+  const ALCchar *devices = alcGetString(NULL, ALC_CAPTURE_DEVICE_SPECIFIER);
+  const ALCchar *ptr = devices;
+
+  // while (ptr[0] != NULL)
+  while (*ptr) {
+    printf("   %s\n", ptr);
+    ptr += strlen(ptr) + 1;
+  }
+
   // Open the default device
   printf("Opening capture device:\n");
   ALCdevice *capture_device =
@@ -41,18 +53,8 @@ ALCdevice *open_capture_device() {
     printf("   Unable to open device!\n");
     exit(1);
   }
-  const ALCchar *devices = alcGetString(capture_device, ALC_CAPTURE_DEVICE_SPECIFIER);
+  devices = alcGetString(capture_device, ALC_CAPTURE_DEVICE_SPECIFIER);
   printf("   opened device %s\n", devices);
 
-  // Print the list of capture devices
-
-  printf("Available capture devices:\n");
-  devices = alcGetString(NULL, ALC_CAPTURE_DEVICE_SPECIFIER);
-  const ALCchar *ptr = devices;
-
-  // while (ptr[0] != NULL)
-  while (*ptr) {
-    printf("   %s\n", ptr);
-    ptr += strlen(ptr) + 1;
-  }
+  return capture_device;
 }
