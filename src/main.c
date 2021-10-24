@@ -10,20 +10,20 @@
 #include "play.h"
 #include "init_al.h"
 
-
-int main() {
-
+int main()
+{
   const ALCchar *devices;
   const ALCchar *ptr;
   ALCcontext *mainContext;
-  ALubyte captureBuffer[1048576];
+  ALubyte capture_buffer[1048576];
   ALubyte *captureBufPtr;
   ALint samplesAvailable;
 
   ALCdevice *playback_device = open_playback_device();
 
   mainContext = alcCreateContext(playback_device, NULL);
-  if (mainContext == NULL) {
+  if (mainContext == NULL)
+  {
     printf("Unable to create playback context!\n");
     exit(1);
   }
@@ -33,15 +33,29 @@ int main() {
   alcMakeContextCurrent(mainContext);
   alcProcessContext(mainContext);
 
-  // Synthesizer playback mainloop
-  // for(;;) {}
   ALCdevice *capture_device = open_capture_device();
 
-  int samples_captured = start_capture(capture_device, captureBuffer);
+  int samples_captured;
+  // Synthesizer playback mainloop
+  for (;;)
+  {
+    samples_captured = capture_rt(capture_device, capture_buffer);
+    if (samples_captured)
+    {
+      play_rt(capture_buffer, samples_captured);
+      
+      printf("\t\tPlaying %d samples .\r", samples_captured);
+      fflush(stdout);
 
-  pause_capture(capture_device);
+      usleep(10000);
+    }
+    
+  }
+  // int samples_captured = capture(capture_device, capture_buffer);
 
-  play(captureBuffer, samples_captured);
+  // pause_capture(capture_device);
+
+  // play(capture_buffer, samples_captured);
 
   // Shut down OpenAL
   alcMakeContextCurrent(NULL);

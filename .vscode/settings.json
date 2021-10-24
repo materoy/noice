@@ -2,6 +2,8 @@
     "files.associations": {
         "stdio.h": "c",
         "capture.h": "c",
-        "alc.h": "c"
+        "alc.h": "c",
+        "play.h": "c",
+        "al.h": "c"
     }
 }
