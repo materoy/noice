@@ -8,14 +8,19 @@
 
 #include "capture.h"
 #include "play.h"
-#include "init_al.h"
+
+int init() {
+
+}
 
 
 int main() {
 
   const ALCchar *devices;
   const ALCchar *ptr;
+  ALCdevice *mainDev;
   ALCcontext *mainContext;
+  ALCdevice *captureDev;
   ALubyte captureBuffer[1048576];
   ALubyte *captureBufPtr;
   ALint samplesAvailable;
@@ -31,9 +36,16 @@ int main() {
     ptr += strlen(ptr) + 1;
   }
 
-  ALCdevice *playback_device = open_playback_device();
-
-  mainContext = alcCreateContext(playback_device, NULL);
+  // Open a playback device and create a context first
+  printf("Opening playback device:\n");
+  mainDev = alcOpenDevice(NULL);
+  if (mainDev == NULL) {
+    printf("Unable to open playback device!\n");
+    exit(1);
+  }
+  devices = alcGetString(mainDev, ALC_DEVICE_SPECIFIER);
+  printf("   opened device '%s'\n", devices);
+  mainContext = alcCreateContext(mainDev, NULL);
   if (mainContext == NULL) {
     printf("Unable to create playback context!\n");
     exit(1);
@@ -56,18 +68,26 @@ int main() {
     ptr += strlen(ptr) + 1;
   }
 
-  ALCdevice *capture_device = open_capture_device();
+  // Open the default device
+  printf("Opening capture device:\n");
+  captureDev = alcCaptureOpenDevice(NULL, 8000, AL_FORMAT_MONO16, 800);
+  if (captureDev == NULL) {
+    printf("   Unable to open device!\n");
+    exit(1);
+  }
+  devices = alcGetString(captureDev, ALC_CAPTURE_DEVICE_SPECIFIER);
+  printf("   opened device %s\n", devices);
 
-  int samples_captured = start_capture(capture_device, captureBuffer);
+  int samples_captured = start_capture(captureDev, captureBuffer);
 
-  pause_capture(capture_device);
+  pause_capture(captureDev);
 
   play(captureBuffer, samples_captured);
 
   // Shut down OpenAL
   alcMakeContextCurrent(NULL);
-  alcCloseDevice(playback_device);
-  alcCaptureCloseDevice(capture_device);
+  alcCloseDevice(mainDev);
+  alcCaptureCloseDevice(captureDev);
 
   return EXIT_SUCCESS;
 }
