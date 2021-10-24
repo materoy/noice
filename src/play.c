@@ -3,7 +3,7 @@
 
 #include "play.h"
 
-void play(ALubyte captureBuffer[], ALsizei samplesCaptured) {
+void play(ALubyte capture_buffer[], ALsizei samples_captured) {
 
   ALuint buffer;
   ALuint source;
@@ -15,7 +15,7 @@ void play(ALubyte captureBuffer[], ALsizei samplesCaptured) {
   // Generate an OpenAL buffer for the captured data
   alGenBuffers(1, &buffer);
   alGenSources(1, &source);
-  alBufferData(buffer, AL_FORMAT_MONO16, captureBuffer, samplesCaptured * 2,
+  alBufferData(buffer, AL_FORMAT_MONO16, capture_buffer, samples_captured * 2,
                8000);
   alSourcei(source, AL_BUFFER, buffer);
   alSourcePlay(source);
