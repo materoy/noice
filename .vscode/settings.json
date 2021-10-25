@@ -4,6 +4,7 @@
         "capture.h": "c",
         "alc.h": "c",
         "play.h": "c",
-        "al.h": "c"
+        "al.h": "c",
+        "init_al.h": "c"
     }
 }

@@ -53,7 +53,7 @@ ALCdevice *open_capture_device()
   // Open the default device
   printf("Opening capture device:\n");
   ALCdevice *capture_device =
-      alcCaptureOpenDevice(NULL, FREQUENCY, AL_FORMAT_MONO16, 800);
+      alcCaptureOpenDevice(NULL, FREQUENCY, AL_FORMAT_MONO16, FREQUENCY * 2);
   if (capture_device == NULL)
   {
     printf("   Unable to open device!\n");

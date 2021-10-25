@@ -42,16 +42,17 @@ int main()
     samples_captured = capture_rt(capture_device, capture_buffer);
     if (samples_captured)
     {
-      play_rt(capture_buffer, samples_captured);
-      
-      printf("\t\tPlaying %d samples .\r", samples_captured);
-      fflush(stdout);
+      // play_rt(capture_buffer, samples_captured);
 
-      usleep(10000);
+      // printf("\t\tPlaying %d samples .\n", samples_captured);
+      // fflush(stdout);
     }
-    
+    else
+    {
+      // printf("%d \n", samples_captured);
+    }
   }
-  // int samples_captured = capture(capture_device, capture_buffer);
+  // int samples_captured = start_timed_capture(capture_device, capture_buffer);
 
   // pause_capture(capture_device);
 

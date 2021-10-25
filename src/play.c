@@ -38,15 +38,18 @@ void play(ALubyte capture_buffer[], ALsizei samples_captured)
   alDeleteBuffers(1, &buffer);
 }
 
+static int init = 0;
 
-ALuint buffer;
-ALuint source;
 void play_rt(ALubyte capture_buffer[], ALsizei samples_captured)
 {
-  // Generate an OpenAL buffer for the captured data
-  alGenBuffers(1, &buffer);
-  alGenSources(1, &source);
-  alBufferData(source, AL_FORMAT_MONO16, capture_buffer, samples_captured * 2, FREQUENCY);
-  alSourcei(source, AL_BUFFER, buffer);
+  if (!init)
+  {
+    // Generate an OpenAL channel_buffers for the captured data
+    alGenBuffers(CHANNELS, &channel_buffers[0]);
+    alGenSources(1, &source[0]);
+    init = 1;
+  }
+  alBufferData(channel_buffers, AL_FORMAT_MONO16, capture_buffer, samples_captured * 2, FREQUENCY);
+  alSourcei(source, AL_BUFFER, channel_buffers);
   alSourcePlay(source);
 }
