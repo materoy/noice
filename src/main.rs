@@ -2,7 +2,7 @@ use std::usize;
 
 use anyhow::Ok;
 use cpal::{
-    traits::{DeviceTrait, HostTrait},
+    traits::{DeviceTrait, HostTrait, StreamTrait},
     InputCallbackInfo, SampleFormat, StreamConfig, Sample,
 };
 
@@ -33,26 +33,27 @@ fn main() -> anyhow::Result<()> {
 
     let err_fn = |err| eprintln!("Error building output stream: {}", err);
 
-    match input_config.sample_format() {
+    let stream = match input_config.sample_format() {
         SampleFormat::I16 => {
-            input_device.build_input_stream(&config, handle_stream::<i16>, err_fn)?;
+            input_device.build_input_stream(&config, handle_stream::<i16>, err_fn)?
         }
         SampleFormat::U16 => {
-            input_device.build_input_stream(&config, handle_stream::<u16>, err_fn)?;
+            input_device.build_input_stream(&config, handle_stream::<u16>, err_fn)?
         },
         SampleFormat::F32 => {
-            input_device.build_input_stream(&config, handle_stream::<f32>, err_fn)?;
+            input_device.build_input_stream(&config, handle_stream::<f32>, err_fn)?
         },
     };
+    stream.play()?;
 
     std::thread::sleep(std::time::Duration::from_millis(3000));
     Ok(())
 }
 
-fn handle_stream<T>(_data: &[T], callback_info: &InputCallbackInfo) 
+fn handle_stream<T>(data: &[T], callback_info: &InputCallbackInfo) 
 where
     T: Sample
 {
- 
+    println!("{:?}", data.len());
     println!("{:?}", callback_info);
 }
