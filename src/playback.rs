@@ -1,10 +1,6 @@
+use cpal::traits::{DeviceTrait, HostTrait};
 
-use cpal::traits::{HostTrait, DeviceTrait};
-
-use std::{
-    fmt::Display,
-    sync::mpsc::Receiver,
-};
+use std::{fmt::Display, sync::mpsc::Receiver};
 
 use crate::SampleRequestOptions;
 
@@ -13,7 +9,6 @@ pub fn sample_next_output(o: &mut SampleRequestOptions) -> f32 {
     o.tone(440.) * 0.1 + o.tone(880.) * 0.1
     // combination of several tones
 }
-
 
 pub fn host_output_device_setup(
 ) -> Result<(cpal::Host, cpal::Device, cpal::SupportedStreamConfig), anyhow::Error> {
@@ -29,7 +24,6 @@ pub fn host_output_device_setup(
 
     Ok((host, device, config))
 }
-
 
 pub fn stream_make_output<T, F>(
     device: &cpal::Device,
@@ -56,10 +50,16 @@ where
         move |output: &mut [T], _: &cpal::OutputCallbackInfo| {
             // on_window(output, &mut request, on_sample, receiver)
 
-            for sample in output.iter_mut() {
-                let received = receiver.recv().unwrap();
-                *sample = received;
-                println!("{}", received);
+            for chunk in output.chunks_mut(nchannels) {
+                for sample in chunk.iter_mut() {
+                    match receiver.recv() {
+                        Ok(input) => {
+                            *sample = input;
+                            println!("{}", input);
+                        }
+                        Err(err) => eprintln!("Error receiveing from channel: {}", err),
+                    }
+                }
             }
         },
         err_fn,
