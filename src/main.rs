@@ -3,7 +3,6 @@ extern crate clap;
 extern crate cpal;
 
 use std::{
-    borrow::BorrowMut,
     fmt::Display,
     sync::mpsc::{channel, Receiver, Sender},
 };
@@ -54,7 +53,7 @@ where
     F: FnMut(&mut SampleRequestOptions) -> f32 + std::marker::Send + 'static + Copy,
     N: FnMut(&mut SampleRequestOptions) -> f32 + std::marker::Send + 'static + Copy,
 {
-    let (_host, input_device, input_config) = host_output_device_setup()?;
+    let (_host, input_device, input_config) = host_input_device_setup()?;
     let (_host, output_device, output_config) = host_output_device_setup()?;
 
     let (input_stream, output_stream) = match input_config.sample_format() {
@@ -141,10 +140,10 @@ pub fn host_input_device_setup(
     let device = host
         .default_input_device()
         .ok_or_else(|| anyhow::Error::msg("Default input device is not available"))?;
-    println!("Output device : {}", device.name()?);
+    println!("Input device : {}", device.name()?);
 
     let config = device.default_output_config()?;
-    println!("Default output config : {:?}", config);
+    println!("Default input config : {:?}", config);
 
     Ok((host, device, config))
 }
