@@ -1,3 +1,5 @@
+use std::fmt::Debug;
+
 use cpal::traits::{DeviceTrait, HostTrait};
 
 use flume::Receiver;
@@ -41,7 +43,7 @@ impl AudioPlayback {
         }
         .map_err(|err| err.to_string())
     }
-    fn play_type<T: cpal::Sample + Send + Sync + 'static>(
+    fn play_type<T: cpal::Sample + Send + Sync + 'static + Debug>(
         self,
         rx: Receiver<Msg>,
     ) -> anyhow::Result<cpal::Stream, cpal::BuildStreamError> {

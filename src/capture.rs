@@ -61,7 +61,6 @@ impl AudioCapture {
                         cpal::SampleFormat::F32 => SampleSize::F32(sample.to_f32()),
                     })
                     .collect();
-                    println!("{:?}", input_samples);
                 if let Err(err) = tx.send(input_samples) {
                     println!("{}", err);
                 };
