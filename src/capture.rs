@@ -1,55 +1,74 @@
+use std::sync::{Mutex, Arc};
+
+use flume::Sender;
 use cpal::traits::{DeviceTrait, HostTrait};
 
-use crate::SampleRequestOptions;
+use crate::types::{SampleSize, Msg};
 
-pub fn sample_next_input(o: &mut SampleRequestOptions) -> f32 {
-    o.tick();
-    o.tone(440.) * 0.1 + o.tone(880.) * 0.1
-    // combination of several tones
+pub struct AudioCapture {
+    device: cpal::Device,
+    supported_config: cpal::SupportedStreamConfig,
 }
+impl AudioCapture {
+    pub fn new() -> anyhow::Result<Self, String> {
+        let (supported_config, device) = AudioCapture::get_stream_config()?;
+        Ok(Self {
+            device,
+            supported_config,
+        })
+    }
+    fn get_device() -> anyhow::Result<cpal::Device, String> {
+        let host = cpal::default_host();
+        host.default_input_device()
+            .ok_or_else(|| "No output device".into())
+    }
 
-pub fn host_input_device_setup(
-) -> Result<(cpal::Host, cpal::Device, cpal::SupportedStreamConfig), anyhow::Error> {
-    let host = cpal::default_host();
+    fn get_stream_config() -> anyhow::Result<(cpal::SupportedStreamConfig, cpal::Device), String> {
+        let device = AudioCapture::get_device()?;
+        let config_range = device.supported_input_configs();
+        let config_range = config_range
+            .map_err(|_| "No config range".to_string())?
+            .next()
+            .ok_or_else(|| "No supported stream configs".to_string())?;
+        let supported_config = config_range.with_max_sample_rate();
 
-    let device = host
-        .default_input_device()
-        .ok_or_else(|| anyhow::Error::msg("Default input device is not available"))?;
-    println!("Input device : {}", device.name()?);
-
-    let config = device.default_input_config()?;
-    println!("Default input config : {:?}", config);
-
-    Ok((host, device, config))
-}
-
-pub fn stream_make_input<T, F>(
-    device: &cpal::Device,
-    config: &cpal::StreamConfig,
-    _on_sample: F,
-    sender: std::sync::mpsc::Sender<T>,
-) -> Result<cpal::Stream, anyhow::Error>
-where
-    T: cpal::Sample + std::marker::Send + 'static + Copy,
-    F: FnMut(&mut SampleRequestOptions) -> f32 + std::marker::Send + 'static + Copy,
-{
-    let _sample_rate = config.sample_rate.0 as f32;
-    let _sample_clock = 0f32;
-    let nchannels = config.channels as usize;
-
-    let err_fn = |err| eprintln!("Error building output sound stream: {}", err);
-
-    let stream = device.build_input_stream(
-        config,
-        move |data: &[T], _: &cpal::InputCallbackInfo| {
-            for chunk in data.chunks(nchannels) {
-                for sample in chunk.iter() {
-                    sender.send(*sample).unwrap();
+        Ok((supported_config, device))
+    }
+    pub fn listen(self, tx: Sender<Msg>, is_paused: Arc<Mutex<bool>>) -> anyhow::Result<cpal::Stream, String> {
+        match self.supported_config.sample_format() {
+            cpal::SampleFormat::I16 => self.listen_type::<i16>(tx, is_paused),
+            cpal::SampleFormat::U16 => self.listen_type::<u16>(tx, is_paused),
+            cpal::SampleFormat::F32 => self.listen_type::<f32>(tx, is_paused),
+        }
+        .map_err(|err| err.to_string())
+    }
+    fn listen_type<T: cpal::Sample + Send + Sync + 'static>(
+        self,
+        tx: Sender<Msg>,
+        is_paused: Arc<Mutex<bool>>,
+    ) -> anyhow::Result<cpal::Stream, cpal::BuildStreamError> {
+        self.device.build_input_stream(
+            &self.supported_config.config(),
+            move |data: &[T], _| {
+                if *is_paused.lock().unwrap() {
+                    return;
                 }
-            }
-        },
-        err_fn,
-    )?;
-
-    Ok(stream)
+                let input_samples = data
+                    .iter()
+                    .map(|sample| match self.supported_config.sample_format() {
+                        cpal::SampleFormat::I16 => SampleSize::I16(sample.to_i16()),
+                        cpal::SampleFormat::U16 => SampleSize::U16(sample.to_u16()),
+                        cpal::SampleFormat::F32 => SampleSize::F32(sample.to_f32()),
+                    })
+                    .collect();
+                    println!("{:?}", input_samples);
+                if let Err(err) = tx.send(input_samples) {
+                    println!("{}", err);
+                };
+            },
+            |_| {
+                println!("err");
+            },
+        )
+    }
 }

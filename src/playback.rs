@@ -1,69 +1,70 @@
 use cpal::traits::{DeviceTrait, HostTrait};
 
-use std::{fmt::Display, sync::mpsc::Receiver};
+use flume::Receiver;
 
-use crate::SampleRequestOptions;
+use crate::types::{SampleSize, Msg};
 
-pub fn sample_next_output(o: &mut SampleRequestOptions) -> f32 {
-    o.tick();
-    o.tone(440.) * 0.1 + o.tone(880.) * 0.1
-    // combination of several tones
+pub struct AudioPlayback {
+    device: cpal::Device,
+    supported_config: cpal::SupportedStreamConfig,
 }
+impl AudioPlayback {
+    pub fn new() -> anyhow::Result<Self, String> {
+        let (supported_config, device) = AudioPlayback::get_stream_config()?;
 
-pub fn host_output_device_setup(
-) -> Result<(cpal::Host, cpal::Device, cpal::SupportedStreamConfig), anyhow::Error> {
-    let host = cpal::default_host();
+        Ok(Self {
+            device,
+            supported_config,
+        })
+    }
+    fn get_device() -> anyhow::Result<cpal::Device, String> {
+        let host = cpal::default_host();
+        host.default_output_device()
+            .ok_or_else(|| "No output device".into())
+    }
+    fn get_stream_config() -> anyhow::Result<(cpal::SupportedStreamConfig, cpal::Device), String> {
+        let device = AudioPlayback::get_device()?;
+        let config_range = device.supported_output_configs();
+        let config_range = config_range
+            .map_err(|_| "No config range".to_string())?
+            .next()
+            .ok_or_else(|| "No supported stream configs".to_string())?;
+        let supported_config = config_range.with_max_sample_rate();
 
-    let device = host
-        .default_output_device()
-        .ok_or_else(|| anyhow::Error::msg("Default output device is not available"))?;
-    println!("Output device : {}", device.name()?);
-
-    let config = device.default_output_config()?;
-    println!("Default output config : {:?}", config);
-
-    Ok((host, device, config))
-}
-
-pub fn stream_make_output<T, F>(
-    device: &cpal::Device,
-    config: &cpal::StreamConfig,
-    _on_sample: F,
-    receiver: Receiver<T>,
-) -> Result<cpal::Stream, anyhow::Error>
-where
-    T: cpal::Sample + std::marker::Send + 'static + Copy + Display,
-    F: FnMut(&mut SampleRequestOptions) -> f32 + std::marker::Send + 'static + Copy,
-{
-    let sample_rate = config.sample_rate.0 as f32;
-    let sample_clock = 0f32;
-    let nchannels = config.channels as usize;
-    let mut _request = SampleRequestOptions {
-        sample_rate,
-        sample_clock,
-        nchannels,
-    };
-    let err_fn = |err| eprintln!("Error building output sound stream: {}", err);
-
-    let stream = device.build_output_stream(
-        config,
-        move |output: &mut [T], _: &cpal::OutputCallbackInfo| {
-            // on_window(output, &mut request, on_sample, receiver)
-
-            for chunk in output.chunks_mut(nchannels) {
-                for sample in chunk.iter_mut() {
-                    match receiver.recv() {
-                        Ok(input) => {
-                            *sample = input;
-                            println!("{}", input);
-                        }
-                        Err(err) => eprintln!("Error receiveing from channel: {}", err),
+        Ok((supported_config, device))
+    }
+    pub fn play(self, rx: Receiver<Msg>) -> anyhow::Result<cpal::Stream, String> {
+        match self.supported_config.sample_format() {
+            cpal::SampleFormat::I16 => self.play_type::<i16>(rx),
+            cpal::SampleFormat::U16 => self.play_type::<u16>(rx),
+            cpal::SampleFormat::F32 => self.play_type::<f32>(rx),
+        }
+        .map_err(|err| err.to_string())
+    }
+    fn play_type<T: cpal::Sample + Send + Sync + 'static>(
+        self,
+        rx: Receiver<Msg>,
+    ) -> anyhow::Result<cpal::Stream, cpal::BuildStreamError> {
+        self.device.build_output_stream(
+            &self.supported_config.config(),
+            move |buffer: &mut [T], _| {
+                let samples = match rx.try_recv() {
+                    Ok(packets) => packets.into_iter().map::<T, _>(|p| match p {
+                        SampleSize::I16(v) => cpal::Sample::from(&v),
+                        SampleSize::U16(v) => cpal::Sample::from(&v),
+                        SampleSize::F32(v) => cpal::Sample::from(&v),
+                    }),
+                    _ => {
+                        return buffer.iter_mut().for_each(|buf| {
+                            *buf = cpal::Sample::from(&0.0);
+                        });
                     }
-                }
-            }
-        },
-        err_fn,
-    )?;
-
-    Ok(stream)
+                };
+                samples.zip(buffer.iter_mut()).for_each(|(sample, buf)| {
+                    *buf = sample;
+                });
+            },
+            |_| {},
+        )
+    }
 }

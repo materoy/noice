@@ -1,47 +1,34 @@
-use cpal::traits::StreamTrait;
+
 
 mod playback;
 mod capture;
-mod stream;
+mod types;
 
-fn main() -> anyhow::Result<()> {
-    let stream = stream::stream_setup_for(capture::sample_next_input, playback::sample_next_output)?;
-    stream.0.play()?;
-    stream.1.play()?;
+use std::sync::{Mutex, Arc};
 
-    std::thread::sleep(std::time::Duration::from_millis(3000));
-    Ok(())
-}
+use capture::AudioCapture;
+use cpal::traits::StreamTrait;
+use playback::AudioPlayback;
+use types::Msg;
 
+fn main() -> anyhow::Result<(), String> {
+    let (tx, rx) = flume::bounded::<Msg>(1);
+    let is_paused = Arc::new(Mutex::new(false));
 
+    // rx will be dropped without variable
+    let playback = AudioPlayback::new()?.play(rx)?;
+    let capture = AudioCapture::new()?.listen(tx, is_paused.clone())?;
+    capture.play().unwrap();
+    playback.play().unwrap();
 
-pub struct SampleRequestOptions {
-    pub sample_rate: f32,
-    pub sample_clock: f32,
-    pub nchannels: usize,
-}
-
-impl SampleRequestOptions {
-    fn tone(&self, freq: f32) -> f32 {
-        (self.sample_clock * freq * 2.0 * std::f32::consts::PI / self.sample_rate).sin()
+    loop {
+        // *is_paused.lock().unwrap() = true;
+        // thread::sleep(Duration::from_secs(1));
+        *is_paused.lock().unwrap() = false;
+        std::thread::sleep(std::time::Duration::from_millis(5000));
     }
-    fn tick(&mut self) {
-        self.sample_clock = (self.sample_clock + 1.0) % self.sample_rate;
-    }
+    // std::thread::sleep(std::time::Duration::from_millis(3000));
+    // Ok(())
 }
 
 
-
-
-fn _on_window<T, F>(output: &mut [T], request: &mut SampleRequestOptions, mut on_sample: F)
-where
-    T: cpal::Sample + std::marker::Send + 'static + Copy + std::fmt::Display,
-    F: FnMut(&mut SampleRequestOptions) -> f32 + std::marker::Send + 'static,
-{
-    for frame in output.chunks_mut(request.nchannels) {
-        let value: T = cpal::Sample::from::<f32>(&on_sample(request));
-        for sample in frame.iter_mut() {
-            *sample = value;
-        }
-    }
-}
