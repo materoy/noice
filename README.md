@@ -1,2 +1,2 @@
-# active-noise-control
+# Noice
 Active noise control
