@@ -4,7 +4,7 @@ use cpal::traits::{DeviceTrait, HostTrait};
 
 use flume::Receiver;
 
-use crate::types::{SampleSize, Msg};
+use crate::types::{Msg, SampleSize};
 
 pub struct AudioPlayback {
     device: cpal::Device,
@@ -13,7 +13,7 @@ pub struct AudioPlayback {
 impl AudioPlayback {
     pub fn new() -> anyhow::Result<Self, String> {
         let (supported_config, device) = AudioPlayback::get_stream_config()?;
-
+        println!("Output config: {:?}", supported_config);
         Ok(Self {
             device,
             supported_config,
@@ -63,7 +63,13 @@ impl AudioPlayback {
                     }
                 };
                 samples.zip(buffer.iter_mut()).for_each(|(sample, buf)| {
-                    *buf = sample;
+                    let inv_sample: T = match self.supported_config.sample_format() {
+                        cpal::SampleFormat::I16 => cpal::Sample::from(&(sample.to_i16() * -1)),
+                        cpal::SampleFormat::U16 => cpal::Sample::from(&(sample.to_u16() * 1)),
+                        cpal::SampleFormat::F32 => cpal::Sample::from(&(sample.to_f32() * -1.0)),
+                    };
+
+                    *buf = inv_sample;
                 });
             },
             |_| {},

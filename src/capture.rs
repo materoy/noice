@@ -1,9 +1,9 @@
-use std::sync::{Mutex, Arc};
+use std::sync::{Arc, Mutex};
 
-use flume::Sender;
 use cpal::traits::{DeviceTrait, HostTrait};
+use flume::Sender;
 
-use crate::types::{SampleSize, Msg};
+use crate::types::{Msg, SampleSize};
 
 pub struct AudioCapture {
     device: cpal::Device,
@@ -12,6 +12,7 @@ pub struct AudioCapture {
 impl AudioCapture {
     pub fn new() -> anyhow::Result<Self, String> {
         let (supported_config, device) = AudioCapture::get_stream_config()?;
+        println!("Input config: {:?}", supported_config);
         Ok(Self {
             device,
             supported_config,
@@ -34,7 +35,11 @@ impl AudioCapture {
 
         Ok((supported_config, device))
     }
-    pub fn listen(self, tx: Sender<Msg>, is_paused: Arc<Mutex<bool>>) -> anyhow::Result<cpal::Stream, String> {
+    pub fn listen(
+        self,
+        tx: Sender<Msg>,
+        is_paused: Arc<Mutex<bool>>,
+    ) -> anyhow::Result<cpal::Stream, String> {
         match self.supported_config.sample_format() {
             cpal::SampleFormat::I16 => self.listen_type::<i16>(tx, is_paused),
             cpal::SampleFormat::U16 => self.listen_type::<u16>(tx, is_paused),
